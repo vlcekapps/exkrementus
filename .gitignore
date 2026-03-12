@@ -1,0 +1,16 @@
+﻿# Build outputs
+builds/
+excrementus.zip
+excrementus.app.zip
+excrementus.apk
+excrementus.aab
+excrementus.apk.idsig
+
+# NVGT temp/runtime artifacts
+.tmp_nvgt/
+tmp_nvgt/
+
+# Editor/system files
+.vscode/
+.DS_Store
+Thumbs.db

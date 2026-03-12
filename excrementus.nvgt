@@ -1,0 +1,1201 @@
+#pragma asset data
+
+#include "touch.nvgt"
+
+const int MAP_SIZE = 20;
+const int MAP_TILE_COUNT = MAP_SIZE * MAP_SIZE;
+const uint64 EXCREMENT_TIMEOUT_MS = 25000;
+const string EXCREMENT_SMALL_AUDIO = "data/audio/excrements/small.mp3";
+const string EXCREMENT_BIGGER_AUDIO = "data/audio/excrements/bigger.mp3";
+const string EXCREMENT_BIG_AUDIO = "data/audio/excrements/big.mp3";
+const float EXCREMENT_PAN_STEP = 0.75;
+const float EXCREMENT_VOLUME_STEP = 0.2;
+const float EXCREMENT_BASE_PITCH = 100.0;
+const float EXCREMENT_PITCH_SHIFT = 50.0;
+const float EXCREMENT_FEEDBACK_PITCH_SMALL = 150.0;
+const float EXCREMENT_FEEDBACK_PITCH_BIGGER = 70.0;
+const float EXCREMENT_FEEDBACK_PITCH_BIG = 50.0;
+const string COUNTING_TAKEN_AUDIO = "data/audio/counting/taken.mp3";
+const string COUNTING_MISSED_AUDIO = "data/audio/counting/missed.mp3";
+const string COUNTING_CANNOTCOUNT_AUDIO = "data/audio/counting/cannotcount.mp3";
+const string COUNTING_CANNOTCOUNTAGAIN_AUDIO = "data/audio/counting/cannotcountagain.mp3";
+const string STATUS_MONEY_AUDIO = "data/audio/statuses/money.mp3";
+const string STATUS_MINUTES_AUDIO = "data/audio/statuses/minutes.mp3";
+const string NUMBERS_WAITUNTILEND_AUDIO = "data/audio/numbers/waituntilend.mp3";
+const string NUMBERS_WAITUNTILENDAGAIN_AUDIO = "data/audio/numbers/waituntilendagain.mp3";
+const int HELP_MANUAL_FADE_MS = 3000;
+const int COUNTING_ANNOUNCEMENT_MODE_SUMMARY = 0;
+const int COUNTING_ANNOUNCEMENT_MODE_MONEY = 1;
+const int COUNTING_ANNOUNCEMENT_MODE_MINUTES = 2;
+
+string[] MENU_ITEMS = {"Nova hra", "Prehrat vysky exkrementu", "Napoveda", "Konec"};
+
+class excrement_object {
+	int x;
+	int y;
+	int kind;
+	uint64 spawned_at_ms;
+	sound loop_sound;
+	bool loop_loaded;
+	bool loop_started;
+	excrement_object(int x, int y, int kind) {
+		this.x = x;
+		this.y = y;
+		this.kind = kind;
+		this.spawned_at_ms = get_now_ms();
+		this.loop_loaded = false;
+		this.loop_started = false;
+	}
+}
+
+sound menu_new_game_sound;
+sound menu_play_pitchs_sound;
+sound menu_help_sound;
+sound menu_exit_sound;
+sound gameloop_sound;
+sound step_sound;
+sound taken_sound;
+sound missed_sound;
+sound reputation_10_sound;
+sound reputation_20_sound;
+sound reputation_30_sound;
+sound reputation_40_sound;
+sound reputation_50_sound;
+sound reputation_60_sound;
+sound reputation_70_sound;
+sound reputation_80_sound;
+sound reputation_90_sound;
+sound reputation_100_sound;
+sound counting_announcement_sound;
+sound manual_sound;
+sound end_reputation_sound;
+sound end_escape_sound;
+sound end_full_sound;
+sound thanks_sound;
+sound paused_status_sound;
+sound resuming_status_sound;
+
+int player_x = 0;
+int player_y = 0;
+int reputation = 100;
+int collected_count = 0;
+int missed_count = 0;
+int earnings_total = 0;
+uint64 next_spawn_ms = 0;
+uint64 game_started_at_ms = 0;
+excrement_object@[] active_excrements;
+bool counting_announcement_active = false;
+int counting_announcement_step = 0;
+int counting_announcement_taken = 0;
+int counting_announcement_missed = 0;
+int counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_SUMMARY;
+int counting_announcement_value = 0;
+bool counting_announcement_loaded = false;
+bool numbers_waituntilend_played = false;
+bool counting_cannotcount_played = false;
+bool spatial_audio_enabled = true;
+bool advanced_touch_game_controls_enabled = true;
+bool gameloop_enabled = true;
+bool touch_controls_enabled = true;
+touch_gesture_manager@ touch_manager = null;
+touch_keyboard_interface@ touch_controls = null;
+
+uint64 get_now_ms() {
+	timestamp current_time;
+	int64 current_time_us = current_time;
+	if (current_time_us <= 0) return 0;
+	return uint64(current_time_us / MILLISECONDS);
+}
+
+bool safe_sound_load(sound@ target, string path) {
+	try {
+		return target.load(path);
+	} catch {
+		return false;
+	}
+}
+
+bool safe_sound_play(sound@ target) {
+	try {
+		return target.play();
+	} catch {
+		return false;
+	}
+}
+
+bool safe_sound_play_looped(sound@ target) {
+	try {
+		return target.play_looped();
+	} catch {
+		return false;
+	}
+}
+
+bool safe_sound_set_fade(sound@ target, int from_volume, int to_volume, int duration_ms) {
+	try {
+		target.set_fade(from_volume, to_volume, duration_ms);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+void safe_sound_stop(sound@ target) {
+	try {
+		target.stop();
+	} catch {
+	}
+}
+
+void safe_sound_close(sound@ target) {
+	try {
+		target.close();
+	} catch {
+	}
+}
+
+bool safe_sound_playing(sound@ target) {
+	try {
+		return target.playing;
+	} catch {
+		return false;
+	}
+}
+
+void main() {
+	show_window("Excrementus");
+	load_audio_assets();
+	ensure_touch_controls();
+	run_main_menu();
+}
+
+void load_audio_assets() {
+	safe_sound_load(menu_new_game_sound, "data/audio/menus/new-game.mp3");
+	safe_sound_load(menu_play_pitchs_sound, "data/audio/menus/playpitchs.mp3");
+	safe_sound_load(menu_help_sound, "data/audio/menus/help.mp3");
+	safe_sound_load(menu_exit_sound, "data/audio/menus/exit.mp3");
+	safe_sound_load(gameloop_sound, "data/audio/gameloop.mp3");
+	safe_sound_load(step_sound, "data/audio/step.mp3");
+	safe_sound_load(taken_sound, "data/audio/taken.mp3");
+	safe_sound_load(manual_sound, "data/audio/manual.mp3");
+	safe_sound_load(thanks_sound, "data/audio/thanks.mp3");
+	safe_sound_load(end_reputation_sound, "data/audio/ends/reputation.mp3");
+	safe_sound_load(end_escape_sound, "data/audio/ends/escape.mp3");
+	safe_sound_load(end_full_sound, "data/audio/ends/full.mp3");
+	safe_sound_load(paused_status_sound, "data/audio/statuses/paused.mp3");
+	safe_sound_load(resuming_status_sound, "data/audio/statuses/resuming.mp3");
+	safe_sound_load(missed_sound, "data/audio/missed.mp3");
+	safe_sound_load(reputation_10_sound, "data/audio/reputation/10.mp3");
+	safe_sound_load(reputation_20_sound, "data/audio/reputation/20.mp3");
+	safe_sound_load(reputation_30_sound, "data/audio/reputation/30.mp3");
+	safe_sound_load(reputation_40_sound, "data/audio/reputation/40.mp3");
+	safe_sound_load(reputation_50_sound, "data/audio/reputation/50.mp3");
+	safe_sound_load(reputation_60_sound, "data/audio/reputation/60.mp3");
+	safe_sound_load(reputation_70_sound, "data/audio/reputation/70.mp3");
+	safe_sound_load(reputation_80_sound, "data/audio/reputation/80.mp3");
+	safe_sound_load(reputation_90_sound, "data/audio/reputation/90.mp3");
+	safe_sound_load(reputation_100_sound, "data/audio/reputation/100.mp3");
+}
+
+void set_menu_escape_only_touch_controls() {
+	dictionary@ keymap = dictionary();
+	keymap.set("double_tap3f", KEY_ESCAPE);
+	set_touch_keymap(keymap);
+}
+
+bool wait_with_menu_delay(int delay_ms) {
+	if (delay_ms <= 0) return false;
+	uint64 started_at_ms = get_now_ms();
+	if (started_at_ms == 0) {
+		int waited_ms = 0;
+		while (waited_ms < delay_ms) {
+			wait(5);
+			waited_ms += 5;
+			monitor_touch_controls();
+			if (key_pressed(KEY_ESCAPE)) {
+				return true;
+			}
+		}
+		return false;
+	}
+	uint64 end_at_ms = started_at_ms + uint64(delay_ms);
+	while (true) {
+		wait(5);
+		monitor_touch_controls();
+		if (key_pressed(KEY_ESCAPE)) {
+			return true;
+		}
+		uint64 now_ms = get_now_ms();
+		if (now_ms == 0 || now_ms >= end_at_ms) {
+			return false;
+		}
+	}
+	return false;
+}
+
+bool play_menu_preview_sample(sound@ sample_sound) {
+	safe_sound_stop(sample_sound);
+	if (!safe_sound_play(sample_sound)) {
+		return false;
+	}
+	while (safe_sound_playing(sample_sound)) {
+		wait(5);
+		monitor_touch_controls();
+		if (key_pressed(KEY_ESCAPE)) {
+			safe_sound_stop(sample_sound);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool play_excrement_pitch_preview() {
+	stop_menu_item_sounds();
+	safe_sound_stop(menu_play_pitchs_sound);
+	set_menu_escape_only_touch_controls();
+
+	sound small_preview_sound;
+	sound bigger_preview_sound;
+	sound big_preview_sound;
+
+	bool has_small = safe_sound_load(small_preview_sound, EXCREMENT_SMALL_AUDIO);
+	bool has_bigger = safe_sound_load(bigger_preview_sound, EXCREMENT_BIGGER_AUDIO);
+	bool has_big = safe_sound_load(big_preview_sound, EXCREMENT_BIG_AUDIO);
+	bool interrupted_by_escape = false;
+
+	for (int i = 0; i < 5 && !interrupted_by_escape; i++) {
+		if (has_small) {
+			interrupted_by_escape = play_menu_preview_sample(small_preview_sound);
+		}
+	}
+	if (!interrupted_by_escape && has_small && (has_bigger || has_big)) {
+		interrupted_by_escape = wait_with_menu_delay(1000);
+	}
+
+	for (int i = 0; i < 5 && !interrupted_by_escape; i++) {
+		if (has_bigger) {
+			interrupted_by_escape = play_menu_preview_sample(bigger_preview_sound);
+		}
+	}
+	if (!interrupted_by_escape && has_bigger && has_big) {
+		interrupted_by_escape = wait_with_menu_delay(1000);
+	}
+
+	for (int i = 0; i < 5 && !interrupted_by_escape; i++) {
+		if (has_big) {
+			interrupted_by_escape = play_menu_preview_sample(big_preview_sound);
+		}
+	}
+
+	if (has_small) {
+		safe_sound_close(small_preview_sound);
+	}
+	if (has_bigger) {
+		safe_sound_close(bigger_preview_sound);
+	}
+	if (has_big) {
+		safe_sound_close(big_preview_sound);
+	}
+	set_menu_touch_controls();
+	return interrupted_by_escape;
+}
+
+bool play_manual_audio() {
+	stop_menu_item_sounds();
+	safe_sound_stop(manual_sound);
+	set_menu_escape_only_touch_controls();
+
+	bool interrupted_by_escape = false;
+	bool gameloop_started = start_gameloop_audio(HELP_MANUAL_FADE_MS);
+
+	if (gameloop_started) {
+		int fade_in_waited_ms = 0;
+		while (fade_in_waited_ms < HELP_MANUAL_FADE_MS) {
+			wait(5);
+			fade_in_waited_ms += 5;
+			monitor_touch_controls();
+			if (key_pressed(KEY_ESCAPE)) {
+				interrupted_by_escape = true;
+				break;
+			}
+		}
+	}
+
+	if (!interrupted_by_escape) {
+		if (safe_sound_play(manual_sound)) {
+			while (safe_sound_playing(manual_sound)) {
+				wait(5);
+				monitor_touch_controls();
+				if (key_pressed(KEY_ESCAPE)) {
+					interrupted_by_escape = true;
+					break;
+				}
+			}
+		}
+	}
+
+	safe_sound_stop(manual_sound);
+	stop_gameloop_audio(HELP_MANUAL_FADE_MS);
+	set_menu_touch_controls();
+	return interrupted_by_escape;
+}
+
+void run_main_menu() {
+	set_menu_touch_controls();
+	int selected_item = 0;
+	const int menu_count = int(MENU_ITEMS.length());
+	highlight_menu_item(selected_item);
+	while (true) {
+		bool action_interrupted_by_escape = false;
+		wait(5);
+		monitor_touch_controls();
+
+		if (key_pressed(KEY_UP)) {
+			selected_item = (selected_item == 0 ? menu_count - 1 : selected_item - 1);
+			highlight_menu_item(selected_item);
+		}
+		if (key_pressed(KEY_DOWN)) {
+			selected_item = (selected_item + 1) % menu_count;
+			highlight_menu_item(selected_item);
+		}
+		if (key_pressed(KEY_RETURN) || key_pressed(KEY_NUMPAD_ENTER)) {
+			if (selected_item == 0) {
+				play_game();
+				set_menu_touch_controls();
+				highlight_menu_item(selected_item);
+			} else if (selected_item == 1) {
+				action_interrupted_by_escape = play_excrement_pitch_preview();
+				highlight_menu_item(selected_item);
+			} else if (selected_item == 2) {
+				action_interrupted_by_escape = play_manual_audio();
+				highlight_menu_item(selected_item);
+			} else {
+				exit();
+			}
+		}
+		if (!action_interrupted_by_escape && key_pressed(KEY_ESCAPE)) {
+			exit_main_menu_with_thanks();
+		}
+	}
+}
+
+void exit_main_menu_with_thanks() {
+	stop_menu_item_sounds();
+	safe_sound_stop(manual_sound);
+	if (!safe_sound_play(thanks_sound)) {
+		exit();
+		return;
+	}
+	while (safe_sound_playing(thanks_sound)) {
+		wait(5);
+	}
+	exit();
+}
+
+void stop_menu_item_sounds() {
+	safe_sound_stop(menu_new_game_sound);
+	safe_sound_stop(menu_play_pitchs_sound);
+	safe_sound_stop(menu_help_sound);
+	safe_sound_stop(menu_exit_sound);
+}
+
+void highlight_menu_item(int index) {
+	stop_menu_item_sounds();
+	if (index == 0) {
+		safe_sound_play(menu_new_game_sound);
+	} else if (index == 1) {
+		safe_sound_play(menu_play_pitchs_sound);
+	} else if (index == 2) {
+		safe_sound_play(menu_help_sound);
+	} else {
+		safe_sound_play(menu_exit_sound);
+	}
+}
+
+void stop_gameloop_audio(int fade_out_ms = 0) {
+	if (!gameloop_enabled) return;
+	if (fade_out_ms > 0 && safe_sound_playing(gameloop_sound)) {
+		if (safe_sound_set_fade(gameloop_sound, 0, -100, fade_out_ms)) {
+			int waited_ms = 0;
+			while (waited_ms < fade_out_ms) {
+				wait(5);
+				waited_ms += 5;
+				monitor_touch_controls();
+			}
+		}
+	}
+	safe_sound_stop(gameloop_sound);
+}
+
+bool start_gameloop_audio(int fade_in_ms = 0) {
+	if (!gameloop_enabled) return false;
+	safe_sound_stop(gameloop_sound);
+	if (fade_in_ms > 0) {
+		safe_sound_set_fade(gameloop_sound, -100, 0, fade_in_ms);
+	} else {
+		safe_sound_set_fade(gameloop_sound, 0, 0, 0);
+	}
+	if (!safe_sound_play_looped(gameloop_sound)) {
+		gameloop_enabled = false;
+		return false;
+	}
+	return true;
+}
+
+void play_game() {
+	reset_game_state();
+	game_started_at_ms = get_now_ms();
+	try {
+		set_game_touch_controls();
+	} catch {
+		advanced_touch_game_controls_enabled = false;
+		set_game_touch_controls();
+	}
+	start_gameloop_audio();
+
+	bool game_over = false;
+	bool ended_by_reputation = false;
+	bool ended_by_full_map = false;
+	bool paused = false;
+	uint64 paused_started_at_ms = 0;
+
+	while (!game_over) {
+		wait(5);
+		monitor_touch_controls();
+
+		if (key_pressed(KEY_ESCAPE)) {
+			uint64 game_ended_at_ms = get_now_ms();
+			stop_gameloop_audio();
+			stop_pause_status_sounds();
+			stop_reputation_sounds();
+			stop_counting_announcement();
+			clear_active_excrements();
+			play_game_end_sound(end_escape_sound);
+			copy_results_to_clipboard(game_ended_at_ms);
+			return;
+		}
+		if (key_pressed(KEY_P)) {
+			if (!paused) {
+				paused = true;
+				paused_started_at_ms = get_now_ms();
+				pause_gameplay_audio();
+				play_pause_status_sound();
+			} else {
+				play_resume_status_sound();
+				uint64 paused_duration_ms = get_now_ms() - paused_started_at_ms;
+				shift_game_timers_for_pause(paused_duration_ms);
+				resume_gameplay_audio_after_pause();
+				paused = false;
+				paused_started_at_ms = 0;
+			}
+			continue;
+		}
+		if (paused) {
+			continue;
+		}
+
+		bool moved = false;
+		if (key_pressed(KEY_LEFT) && player_x > 0) {
+			player_x--;
+			moved = true;
+		} else if (key_pressed(KEY_RIGHT) && player_x < MAP_SIZE - 1) {
+			player_x++;
+			moved = true;
+		} else if (key_pressed(KEY_UP) && player_y > 0) {
+			player_y--;
+			moved = true;
+		} else if (key_pressed(KEY_DOWN) && player_y < MAP_SIZE - 1) {
+			player_y++;
+			moved = true;
+		}
+
+		if (moved) {
+			safe_sound_stop(step_sound);
+			safe_sound_play(step_sound);
+			collect_excrement_under_player();
+		}
+
+		if (key_pressed(KEY_R)) {
+			stop_counting_announcement();
+			play_reputation_sound();
+		}
+		if (key_pressed(KEY_E)) {
+			start_counting_announcement();
+		}
+		if (key_pressed(KEY_M)) {
+			start_money_announcement();
+		}
+		if (key_pressed(KEY_T)) {
+			start_minutes_announcement();
+		}
+		if (key_pressed(KEY_K)) {
+			play_active_excrement_count();
+		}
+
+		if (process_expired_excrements()) {
+			ended_by_reputation = true;
+			game_over = true;
+		}
+		if (!game_over && !process_spawns()) {
+			ended_by_full_map = true;
+			game_over = true;
+		}
+
+		update_counting_announcement();
+		update_excrement_audio_positions();
+	}
+
+	uint64 game_ended_at_ms = get_now_ms();
+	stop_gameloop_audio();
+	stop_pause_status_sounds();
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	clear_active_excrements();
+
+	if (ended_by_reputation) {
+		play_game_end_sound(end_reputation_sound);
+	} else if (ended_by_full_map) {
+		play_game_end_sound(end_full_sound);
+	}
+	copy_results_to_clipboard(game_ended_at_ms);
+}
+
+void stop_game_end_sounds() {
+	safe_sound_stop(end_reputation_sound);
+	safe_sound_stop(end_escape_sound);
+	safe_sound_stop(end_full_sound);
+}
+
+void play_game_end_sound(sound@ end_sound) {
+	stop_game_end_sounds();
+	if (!safe_sound_play(end_sound)) {
+		return;
+	}
+	while (safe_sound_playing(end_sound)) {
+		wait(5);
+	}
+}
+
+void disable_touch_controls() {
+	touch_controls_enabled = false;
+	@touch_manager = null;
+	@touch_controls = null;
+}
+
+void ensure_touch_controls() {
+	if (!touch_controls_enabled) {
+		return;
+	}
+	if (@touch_manager != null && @touch_controls != null) {
+		return;
+	}
+
+	try {
+		@touch_manager = touch_gesture_manager();
+		dictionary@ keymap = dictionary();
+		@touch_controls = touch_keyboard_interface(touch_manager, keymap);
+		touch_manager.add_touch_interface(touch_controls);
+	} catch {
+		disable_touch_controls();
+	}
+}
+
+void monitor_touch_controls() {
+	if (@touch_manager == null) return;
+	try {
+		touch_manager.monitor();
+	} catch {
+		disable_touch_controls();
+	}
+}
+
+void set_touch_keymap(dictionary@ keymap) {
+	ensure_touch_controls();
+	if (@touch_controls == null) return;
+	try {
+		touch_controls.force_release_all();
+		touch_controls.keymap = keymap;
+	} catch {
+		disable_touch_controls();
+	}
+}
+
+void set_menu_touch_controls() {
+	dictionary@ keymap = dictionary();
+	keymap.set("swipe_up1f", KEY_UP);
+	keymap.set("swipe_down1f", KEY_DOWN);
+	keymap.set("double_tap1f", KEY_RETURN);
+	keymap.set("double_tap3f", KEY_ESCAPE);
+	set_touch_keymap(keymap);
+}
+
+void set_game_touch_controls() {
+	dictionary@ keymap = dictionary();
+	keymap.set("single_tap1f", KEY_K);
+	keymap.set("swipe_left1f", KEY_LEFT);
+	keymap.set("swipe_right1f", KEY_RIGHT);
+	keymap.set("swipe_up1f", KEY_UP);
+	keymap.set("swipe_down1f", KEY_DOWN);
+	keymap.set("single_tap3f", KEY_P);
+
+	if (advanced_touch_game_controls_enabled) {
+		keymap.set("swipe_left2f", KEY_M);
+		keymap.set("swipe_right2f", KEY_T);
+		keymap.set("swipe_up2f", KEY_R);
+		keymap.set("swipe_down2f", KEY_E);
+		keymap.set("double_tap3f", KEY_ESCAPE);
+	}
+
+	set_touch_keymap(keymap);
+}
+
+void play_pause_status_sound() {
+	safe_sound_stop(resuming_status_sound);
+	safe_sound_stop(paused_status_sound);
+	safe_sound_play(paused_status_sound);
+}
+
+void play_resume_status_sound() {
+	safe_sound_stop(paused_status_sound);
+	safe_sound_stop(resuming_status_sound);
+	if (!safe_sound_play(resuming_status_sound)) {
+		return;
+	}
+	while (safe_sound_playing(resuming_status_sound)) {
+		wait(5);
+		monitor_touch_controls();
+	}
+}
+
+void stop_pause_status_sounds() {
+	safe_sound_stop(paused_status_sound);
+	safe_sound_stop(resuming_status_sound);
+}
+
+void pause_gameplay_audio() {
+	stop_gameloop_audio();
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		if (active_excrements[i].loop_started) {
+			safe_sound_stop(active_excrements[i].loop_sound);
+			active_excrements[i].loop_started = false;
+		}
+	}
+}
+
+void resume_gameplay_audio_after_pause() {
+	start_gameloop_audio();
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		start_excrement_audio(active_excrements[i]);
+		update_excrement_audio_position(active_excrements[i]);
+	}
+}
+
+void shift_game_timers_for_pause(uint64 paused_duration_ms) {
+	if (paused_duration_ms == 0) return;
+	if (next_spawn_ms > 0) {
+		next_spawn_ms += paused_duration_ms;
+	}
+	if (game_started_at_ms > 0) {
+		game_started_at_ms += paused_duration_ms;
+	}
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		active_excrements[i].spawned_at_ms += paused_duration_ms;
+	}
+}
+
+void play_reputation_sound() {
+	stop_reputation_sounds();
+	int rounded_reputation = (reputation / 10) * 10;
+	if (rounded_reputation < 10) return;
+	if (rounded_reputation > 100) rounded_reputation = 100;
+
+	if (rounded_reputation == 10) {
+		safe_sound_play(reputation_10_sound);
+		return;
+	}
+	if (rounded_reputation == 20) {
+		safe_sound_play(reputation_20_sound);
+		return;
+	}
+	if (rounded_reputation == 30) {
+		safe_sound_play(reputation_30_sound);
+		return;
+	}
+	if (rounded_reputation == 40) {
+		safe_sound_play(reputation_40_sound);
+		return;
+	}
+	if (rounded_reputation == 50) {
+		safe_sound_play(reputation_50_sound);
+		return;
+	}
+	if (rounded_reputation == 60) {
+		safe_sound_play(reputation_60_sound);
+		return;
+	}
+	if (rounded_reputation == 70) {
+		safe_sound_play(reputation_70_sound);
+		return;
+	}
+	if (rounded_reputation == 80) {
+		safe_sound_play(reputation_80_sound);
+		return;
+	}
+	if (rounded_reputation == 90) {
+		safe_sound_play(reputation_90_sound);
+		return;
+	}
+	safe_sound_play(reputation_100_sound);
+}
+
+void stop_reputation_sounds() {
+	safe_sound_stop(reputation_10_sound);
+	safe_sound_stop(reputation_20_sound);
+	safe_sound_stop(reputation_30_sound);
+	safe_sound_stop(reputation_40_sound);
+	safe_sound_stop(reputation_50_sound);
+	safe_sound_stop(reputation_60_sound);
+	safe_sound_stop(reputation_70_sound);
+	safe_sound_stop(reputation_80_sound);
+	safe_sound_stop(reputation_90_sound);
+	safe_sound_stop(reputation_100_sound);
+}
+
+int get_missed_excrement_count() {
+	return missed_count;
+}
+
+int get_game_elapsed_minutes(uint64 game_ended_at_ms) {
+	if (game_started_at_ms == 0 || game_ended_at_ms <= game_started_at_ms) return 0;
+	uint64 elapsed_ms = game_ended_at_ms - game_started_at_ms;
+	return int(elapsed_ms / 60000);
+}
+
+void copy_results_to_clipboard(uint64 game_ended_at_ms) {
+	int elapsed_minutes = get_game_elapsed_minutes(game_ended_at_ms);
+	clipboard_set_text("Sebral jsi " + collected_count + " exkrementu, minul jsi " + get_missed_excrement_count() + ", hral jsi " + elapsed_minutes + " minut a vydelal jsi " + earnings_total + ".");
+}
+
+void stop_counting_announcement() {
+	counting_announcement_active = false;
+	counting_announcement_step = 0;
+	counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_SUMMARY;
+	counting_announcement_value = 0;
+	if (!counting_announcement_loaded) return;
+	try {
+		counting_announcement_sound.stop();
+		counting_announcement_sound.close();
+	} catch {
+	}
+	counting_announcement_loaded = false;
+}
+
+bool play_counting_announcement_file(string path) {
+	if (counting_announcement_loaded) {
+		try {
+			counting_announcement_sound.stop();
+			counting_announcement_sound.close();
+		} catch {
+		}
+		counting_announcement_loaded = false;
+	}
+	try {
+		if (!counting_announcement_sound.load(path)) {
+			return false;
+		}
+		counting_announcement_loaded = true;
+		if (!counting_announcement_sound.play()) {
+			counting_announcement_sound.close();
+			counting_announcement_loaded = false;
+			return false;
+		}
+	} catch {
+		counting_announcement_loaded = false;
+		return false;
+	}
+	return true;
+}
+
+bool play_counting_number(int value) {
+	string number_path = "data/audio/counting/" + value + ".mp3";
+	if (play_counting_announcement_file(number_path)) {
+		return true;
+	}
+	if (!counting_cannotcount_played) {
+		if (play_counting_announcement_file(COUNTING_CANNOTCOUNT_AUDIO)) {
+			counting_cannotcount_played = true;
+			return true;
+		}
+	} else {
+		if (play_counting_announcement_file(COUNTING_CANNOTCOUNTAGAIN_AUDIO)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool play_map_count_number(int value) {
+	return play_counting_announcement_file("data/audio/counting/" + value + ".mp3");
+}
+
+void play_active_excrement_count() {
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	play_map_count_number(int(active_excrements.length()));
+}
+
+bool play_numbers_number(int value) {
+	string number_path = "data/audio/numbers/" + value + ".mp3";
+	if (play_counting_announcement_file(number_path)) {
+		return true;
+	}
+	if (!numbers_waituntilend_played) {
+		if (play_counting_announcement_file(NUMBERS_WAITUNTILEND_AUDIO)) {
+			numbers_waituntilend_played = true;
+			return true;
+		}
+	} else {
+		if (play_counting_announcement_file(NUMBERS_WAITUNTILENDAGAIN_AUDIO)) {
+			return true;
+		}
+	}
+	return play_counting_announcement_file(COUNTING_CANNOTCOUNT_AUDIO);
+}
+
+void play_summary_counting_announcement_step() {
+	if (counting_announcement_step == 0) {
+		if (!play_counting_announcement_file(COUNTING_TAKEN_AUDIO)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	if (counting_announcement_step == 1) {
+		if (!play_counting_number(counting_announcement_taken)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	if (counting_announcement_step == 2) {
+		if (!play_counting_announcement_file(COUNTING_MISSED_AUDIO)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	if (counting_announcement_step == 3) {
+		if (!play_counting_number(counting_announcement_missed)) {
+			stop_counting_announcement();
+			return;
+		}
+		return;
+	}
+	stop_counting_announcement();
+}
+
+void play_money_counting_announcement_step() {
+	if (counting_announcement_step == 0) {
+		if (!play_counting_announcement_file(STATUS_MONEY_AUDIO)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	if (counting_announcement_step == 1) {
+		if (!play_numbers_number(counting_announcement_value)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	stop_counting_announcement();
+}
+
+void play_minutes_counting_announcement_step() {
+	if (counting_announcement_step == 0) {
+		if (!play_counting_announcement_file(STATUS_MINUTES_AUDIO)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	if (counting_announcement_step == 1) {
+		if (!play_numbers_number(counting_announcement_value)) {
+			stop_counting_announcement();
+		}
+		return;
+	}
+	stop_counting_announcement();
+}
+
+void play_counting_announcement_step() {
+	if (counting_announcement_mode == COUNTING_ANNOUNCEMENT_MODE_MONEY) {
+		play_money_counting_announcement_step();
+		return;
+	}
+	if (counting_announcement_mode == COUNTING_ANNOUNCEMENT_MODE_MINUTES) {
+		play_minutes_counting_announcement_step();
+		return;
+	}
+	play_summary_counting_announcement_step();
+}
+
+void start_counting_announcement() {
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_SUMMARY;
+	counting_announcement_taken = collected_count;
+	counting_announcement_missed = get_missed_excrement_count();
+	counting_announcement_value = 0;
+	counting_announcement_active = true;
+	counting_announcement_step = 0;
+	play_counting_announcement_step();
+}
+
+void start_money_announcement() {
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_MONEY;
+	counting_announcement_value = earnings_total;
+	counting_announcement_active = true;
+	counting_announcement_step = 0;
+	play_counting_announcement_step();
+}
+
+void start_minutes_announcement() {
+	stop_reputation_sounds();
+	stop_counting_announcement();
+	counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_MINUTES;
+	counting_announcement_value = get_game_elapsed_minutes(get_now_ms());
+	counting_announcement_active = true;
+	counting_announcement_step = 0;
+	play_counting_announcement_step();
+}
+
+void update_counting_announcement() {
+	if (!counting_announcement_active) return;
+	if (safe_sound_playing(counting_announcement_sound)) return;
+
+	counting_announcement_step++;
+	play_counting_announcement_step();
+}
+
+void reset_game_state() {
+	player_x = 0;
+	player_y = 0;
+	reputation = 100;
+	collected_count = 0;
+	missed_count = 0;
+	earnings_total = 0;
+	numbers_waituntilend_played = false;
+	counting_cannotcount_played = false;
+	game_started_at_ms = 0;
+	stop_reputation_sounds();
+	stop_pause_status_sounds();
+	stop_game_end_sounds();
+	stop_counting_announcement();
+	clear_active_excrements();
+	next_spawn_ms = get_now_ms() + get_spawn_interval_ms(get_now_ms());
+}
+
+int get_spawn_interval_ms(uint64 now_ms) {
+	if (game_started_at_ms == 0 || now_ms <= game_started_at_ms) return 20000;
+
+	uint64 elapsed_ms = now_ms - game_started_at_ms;
+	int elapsed_minutes = int(elapsed_ms / 60000);
+	int interval_ms = 20000 - (elapsed_minutes * 1000);
+	if (interval_ms < 1000) return 1000;
+	return interval_ms;
+}
+
+bool is_excrement_at(int x, int y) {
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		if (active_excrements[i].x == x && active_excrements[i].y == y) {
+			return true;
+		}
+	}
+	return false;
+}
+
+string get_excrement_audio_path(int kind) {
+	if (kind == 0) return EXCREMENT_SMALL_AUDIO;
+	if (kind == 1) return EXCREMENT_BIGGER_AUDIO;
+	return EXCREMENT_BIG_AUDIO;
+}
+
+int get_excrement_earnings(int kind) {
+	if (kind == 0) return 10;
+	if (kind == 1) return 15;
+	return 20;
+}
+
+float get_excrement_feedback_pitch(int kind) {
+	if (kind == 1) return EXCREMENT_FEEDBACK_PITCH_BIGGER;
+	if (kind == 2) return EXCREMENT_FEEDBACK_PITCH_BIG;
+	return EXCREMENT_FEEDBACK_PITCH_SMALL;
+}
+
+float get_excrement_pitch(excrement_object@ obj) {
+	if (player_y > obj.y) return EXCREMENT_BASE_PITCH - EXCREMENT_PITCH_SHIFT;
+	if (player_y < obj.y) return EXCREMENT_BASE_PITCH + EXCREMENT_PITCH_SHIFT;
+	return EXCREMENT_BASE_PITCH;
+}
+
+void start_excrement_audio(excrement_object@ obj) {
+	if (!obj.loop_loaded) {
+		obj.loop_loaded = safe_sound_load(obj.loop_sound, get_excrement_audio_path(obj.kind));
+	}
+	if (obj.loop_loaded) {
+		if (spatial_audio_enabled) {
+			try {
+				obj.loop_sound.positioning = AUDIO_POSITIONING_ABSOLUTE;
+				obj.loop_sound.directional_attenuation_factor = EXCREMENT_PAN_STEP;
+				obj.loop_sound.rolloff = EXCREMENT_VOLUME_STEP;
+			} catch {
+				spatial_audio_enabled = false;
+			}
+		}
+		try {
+			obj.loop_sound.pitch = get_excrement_pitch(obj);
+		} catch {
+		}
+	}
+	if (!obj.loop_started && obj.loop_loaded) {
+		obj.loop_started = safe_sound_play_looped(obj.loop_sound);
+		if (!obj.loop_started) {
+			obj.loop_started = false;
+			obj.loop_loaded = false;
+			safe_sound_close(obj.loop_sound);
+		}
+	}
+}
+
+void stop_excrement_audio(excrement_object@ obj) {
+	if (obj.loop_started) {
+		safe_sound_stop(obj.loop_sound);
+		obj.loop_started = false;
+	}
+	if (obj.loop_loaded) {
+		safe_sound_close(obj.loop_sound);
+		obj.loop_loaded = false;
+	}
+}
+
+void update_excrement_audio_position(excrement_object@ obj) {
+	if (!obj.loop_started) return;
+	try {
+		obj.loop_sound.pitch = get_excrement_pitch(obj);
+	} catch {
+	}
+	if (!spatial_audio_enabled) return;
+
+	float relative_x = float(obj.x - player_x);
+	float relative_y = float(obj.y - player_y);
+	try {
+		obj.loop_sound.spatialization_enabled = (relative_x != 0.0 || relative_y != 0.0);
+		obj.loop_sound.set_position_3d(relative_x, relative_y, 0.0);
+	} catch {
+		spatial_audio_enabled = false;
+	}
+}
+
+void update_excrement_audio_positions() {
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		start_excrement_audio(active_excrements[i]);
+		update_excrement_audio_position(active_excrements[i]);
+	}
+}
+
+void clear_active_excrements() {
+	for (uint i = 0; i < active_excrements.length(); i++) {
+		stop_excrement_audio(active_excrements[i]);
+	}
+	active_excrements.resize(0);
+}
+
+bool spawn_excrement() {
+	int[] free_tiles;
+	for (int i = 0; i < MAP_TILE_COUNT; i++) {
+		int x = i % MAP_SIZE;
+		int y = i / MAP_SIZE;
+		if (!is_excrement_at(x, y)) {
+			free_tiles.insert_last(i);
+		}
+	}
+
+	if (free_tiles.length() == 0) {
+		return false;
+	}
+
+	int selected = random(0, int(free_tiles.length()) - 1);
+	int chosen_tile = free_tiles[selected];
+	int spawn_x = chosen_tile % MAP_SIZE;
+	int spawn_y = chosen_tile / MAP_SIZE;
+	int kind = random(0, 2);
+
+	excrement_object@ obj = excrement_object(spawn_x, spawn_y, kind);
+	active_excrements.insert_last(obj);
+	start_excrement_audio(obj);
+	update_excrement_audio_position(obj);
+	return true;
+}
+
+bool process_spawns() {
+	uint64 now = get_now_ms();
+	while (now >= next_spawn_ms) {
+		if (!spawn_excrement()) {
+			return false;
+		}
+		next_spawn_ms += get_spawn_interval_ms(now);
+		now = get_now_ms();
+	}
+	return true;
+}
+
+bool is_excrement_expired(excrement_object@ obj, uint64 now_ms) {
+	if (now_ms < obj.spawned_at_ms) return false;
+	return (now_ms - obj.spawned_at_ms) >= EXCREMENT_TIMEOUT_MS;
+}
+
+void collect_excrement_under_player() {
+	uint64 now = get_now_ms();
+	for (int i = int(active_excrements.length()) - 1; i >= 0; i--) {
+		if (active_excrements[i].x == player_x && active_excrements[i].y == player_y) {
+			if (is_excrement_expired(active_excrements[i], now)) {
+				continue;
+			}
+			int collected_kind = active_excrements[i].kind;
+			stop_excrement_audio(active_excrements[i]);
+			active_excrements.remove_at(uint(i));
+			taken_sound.pitch = get_excrement_feedback_pitch(collected_kind);
+			safe_sound_play(taken_sound);
+			collected_count++;
+			earnings_total += get_excrement_earnings(collected_kind);
+			if (reputation < 100) {
+				reputation += 10;
+				if (reputation > 100) {
+					reputation = 100;
+				}
+			}
+		}
+	}
+}
+
+bool process_expired_excrements() {
+	uint64 now = get_now_ms();
+	for (int i = int(active_excrements.length()) - 1; i >= 0; i--) {
+		if (is_excrement_expired(active_excrements[i], now)) {
+			int missed_kind = active_excrements[i].kind;
+			stop_excrement_audio(active_excrements[i]);
+			active_excrements.remove_at(uint(i));
+			missed_sound.pitch = get_excrement_feedback_pitch(missed_kind);
+			safe_sound_play(missed_sound);
+			missed_count++;
+			reputation -= 10;
+			if (reputation < 0) {
+				reputation = 0;
+			}
+			if (reputation == 0) {
+				return true;
+			}
+		}
+	}
+	return false;
+}

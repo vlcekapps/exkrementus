@@ -1,0 +1,65 @@
+Vitejte v nasem krasnem a tichem parku.
+
+Prave jste se stal jeho soucasti jako nejvrchnejsi uklizec psich exkrementu.
+Jmenuji se Vlasticka a ridim tuto cast.
+Dle vami zaslaneho zivotopisu a motivacniho dopisu se zda, ze prave vy disponujete schopnostmi rychleho a bystreho cloveka, kteremu nesmrdi prace a ktery bude v nasem parku udrzovat poradek. Ale musim ze zkusenosti nasich, zejmena byvalych, zamestnancu priznat, ze to nebudete mit vubec jednoduche.
+Cim dele budete pracovat, tim vice nezodpovednych panicku bude vencit sve psy a verim, ze budete mit opravdu hodne napilno. Pokusime se vam to ale usnadnit.
+
+Kazdy exkrement ma svuj zvuk.
+Pokud budete za nim, bude jeho zvuk hluboky.
+Pokud budete pred nim, bude zvuk vysoky.
+Pokud budete vedle nej, prehraje se zvuk normalne ve stredni vysce. V tom pripade bude jiste vlevo nebo vpravo od vas.
+Jak maji znit zvuky normalne si muzete prehrat v menu. Prehraje se vam petkrat zvuk pro maly, petkrat pro stredni a petkrat pro velky exkrement. Mezi velikostmi je kratka pauza.
+
+Jelikoz si zakladame na dobre povesti, budeme vasi praci kontrolovat.
+To ma na starosti nas temer vzdy vesely Tonda. Prehlednete-li nejaky exkrement, Tonda ho velmi rad sebere, ale snizi vam reputaci.
+Tu si muzete napravit sebranim dalsiho exkrementu a to se pocita takto:
+jeden nesebrany exkrement minus 10 procent,
+jeden sebrany exkrement plus 10 procent,
+maximalni reputace je vzdy 100 procent.
+Pokud vase reputace klesne na nulu, budeme muset nas pracovne-pravni vztah rozvazat.
+To same plati i v pripade, kdy nebudete stihat sbirat. Nas park neni nijak velky a cistota je pro nas prioritou.
+
+Dle smlouvy dostavate vyplatu a jste placen od sebraneho kusu:
+za maly exkrement 10 korun,
+za stredni 15 korun,
+za velky 20 korun.
+
+Ovladani behem hry na pocitaci:
+sipky nahoru, dolu, vlevo, vpravo pro pohyb,
+R jako Radek pro reputaci,
+E jako Eva pro souhrn sebranych a prehlednutych kusu,
+M jako Marie pro aktualni vydelek,
+T jako Tomas pro odehrane minuty,
+K jako Karel pro pocet aktualnich exkrementu na mape,
+P jako Pavel pro pauzu a pokracovani,
+Esc pro ukonceni aktualniho behu a navrat do menu.
+
+Ovladani behem hry na Androidu:
+jednim prstem svih nahoru, dolu, vlevo a vpravo pro pohyb,
+jednim prstem jedno klepnuti pro pocet aktualnich exkrementu na mape,
+dvema prsty svih nahoru pro reputaci,
+dvema prsty svih dolu pro souhrn,
+dvema prsty svih vlevo pro vydelek,
+dvema prsty svih vpravo pro odehrane minuty,
+tremi prsty jedno klepnuti pro pauzu a pokracovani,
+tremi prsty dvojite klepnuti pro ukonceni behu a navrat do menu.
+
+Kdyz to stihame, informace o poctu kusu vam da kontrolor Tonda.
+Kdyz nestiha, dostanete vypis prace az na konci smeny, tzv. evidencni list.
+
+Informace o vydelku vam sdeli nase personalni a ucetni v jedne osobe, slecna Dita.
+Byvali zamestnanci tvrdi, ze z ni jde nekdy strach a svym kolegum zasadne tyka.
+Pokud si povedete opravdu dobre, nemusi stihat evidovat vase vydelky. V takovem pripade si take pockate na evidencni list na konci smeny.
+Kdyz personal nestiha, vasi praci eviduji externi pracovnici. Tonda bude nadale sbirat prehlednute exkrementy, ale o evidenci se postara nektery z nasich smluvnich externistu.
+
+Pokud u vas doma dojde k nenadale situaci a vy budete nuceni z prace predcasne odejit, zmacknete Escape. Na Androidu klepnete dvakrat tremi prsty a Tonda vas necha odejit. Vyplati vam mzdu a preda evidencni list, kde se dozvite, kolik jste toho sebral, kolik ne, jak dlouho jste byl v praci a jakou mate gazi.
+
+Pokud si budete chtit odskocit a pak v praci pokracovat, zmacknete P jako Pavel. Na Androidu klepnete tremi prsty. Stejnym zpusobem se do prace zase vratite. Tonda s tim bude naprosto v pohode.
+
+Ovladani menu na Androidu:
+jednim prstem svih nahoru a dolu pro vyber polozky,
+jednim prstem dvojite klepnuti pro potvrzeni polozky,
+tremi prsty dvojite klepnuti pro ukonceni aplikace.
+
+Preji vam hodne stesti, ale nezapominejte, ze kazdy den je jiny. Tak i u nas se cas od casu muze stat neco necekaneho, co muze pozitivne i negativne ovlivnit vasi praci.
