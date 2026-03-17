@@ -29,6 +29,13 @@ const int COUNTING_ANNOUNCEMENT_MODE_MONEY = 1;
 const int COUNTING_ANNOUNCEMENT_MODE_MINUTES = 2;
 
 string[] MENU_ITEMS = {"Nova hra", "Prehrat vysky exkrementu", "Napoveda", "Konec"};
+const uint MAIN_WINDOW_FLAGS_DESKTOP = WINDOW_FLAG_FULLSCREEN;
+
+void show_main_window() {
+	uint flags = 0;
+	if (!system_is_mobile) flags = MAIN_WINDOW_FLAGS_DESKTOP;
+	show_window("Exkrementus", flags);
+}
 
 class excrement_object {
 	int x;
@@ -93,6 +100,7 @@ int counting_announcement_value = 0;
 bool counting_announcement_loaded = false;
 bool numbers_waituntilend_played = false;
 bool counting_cannotcount_played = false;
+bool counting_last_number_used_fallback = false;
 bool spatial_audio_enabled = true;
 bool advanced_touch_game_controls_enabled = true;
 bool gameloop_enabled = true;
@@ -163,7 +171,7 @@ bool safe_sound_playing(sound@ target) {
 }
 
 void main() {
-	show_window("Excrementus");
+	show_main_window();
 	load_audio_assets();
 	ensure_touch_controls();
 	run_main_menu();
@@ -783,6 +791,7 @@ void stop_counting_announcement() {
 	counting_announcement_step = 0;
 	counting_announcement_mode = COUNTING_ANNOUNCEMENT_MODE_SUMMARY;
 	counting_announcement_value = 0;
+	counting_last_number_used_fallback = false;
 	if (!counting_announcement_loaded) return;
 	try {
 		counting_announcement_sound.stop();
@@ -819,6 +828,7 @@ bool play_counting_announcement_file(string path) {
 }
 
 bool play_counting_number(int value) {
+	counting_last_number_used_fallback = false;
 	string number_path = "data/audio/counting/" + value + ".mp3";
 	if (play_counting_announcement_file(number_path)) {
 		return true;
@@ -826,10 +836,12 @@ bool play_counting_number(int value) {
 	if (!counting_cannotcount_played) {
 		if (play_counting_announcement_file(COUNTING_CANNOTCOUNT_AUDIO)) {
 			counting_cannotcount_played = true;
+			counting_last_number_used_fallback = true;
 			return true;
 		}
 	} else {
 		if (play_counting_announcement_file(COUNTING_CANNOTCOUNTAGAIN_AUDIO)) {
+			counting_last_number_used_fallback = true;
 			return true;
 		}
 	}
@@ -838,6 +850,31 @@ bool play_counting_number(int value) {
 
 bool play_map_count_number(int value) {
 	return play_counting_announcement_file("data/audio/counting/" + value + ".mp3");
+}
+
+bool can_load_audio_file(string path) {
+	sound probe_sound;
+	try {
+		if (!probe_sound.load(path)) {
+			return false;
+		}
+		probe_sound.close();
+		return true;
+	} catch {
+		try {
+			probe_sound.close();
+		} catch {
+		}
+		return false;
+	}
+}
+
+bool has_counting_number_audio(int value) {
+	return can_load_audio_file("data/audio/counting/" + value + ".mp3");
+}
+
+bool has_numbers_number_audio(int value) {
+	return can_load_audio_file("data/audio/numbers/" + value + ".mp3");
 }
 
 void play_active_excrement_count() {
@@ -866,6 +903,15 @@ bool play_numbers_number(int value) {
 
 void play_summary_counting_announcement_step() {
 	if (counting_announcement_step == 0) {
+		if (!has_counting_number_audio(counting_announcement_taken)) {
+			if (!play_counting_number(counting_announcement_taken)) {
+				stop_counting_announcement();
+				return;
+			}
+			// Missing taken number: play cannotcount and end summary without missed section.
+			counting_announcement_step = 4;
+			return;
+		}
 		if (!play_counting_announcement_file(COUNTING_TAKEN_AUDIO)) {
 			stop_counting_announcement();
 		}
@@ -874,12 +920,18 @@ void play_summary_counting_announcement_step() {
 	if (counting_announcement_step == 1) {
 		if (!play_counting_number(counting_announcement_taken)) {
 			stop_counting_announcement();
+			return;
+		}
+		if (counting_last_number_used_fallback) {
+			// Fallback after taken number means summary should end without missed section.
+			counting_announcement_step = 4;
 		}
 		return;
 	}
 	if (counting_announcement_step == 2) {
 		if (!play_counting_announcement_file(COUNTING_MISSED_AUDIO)) {
 			stop_counting_announcement();
+			return;
 		}
 		return;
 	}
@@ -895,6 +947,15 @@ void play_summary_counting_announcement_step() {
 
 void play_money_counting_announcement_step() {
 	if (counting_announcement_step == 0) {
+		if (!has_numbers_number_audio(counting_announcement_value)) {
+			if (!play_numbers_number(counting_announcement_value)) {
+				stop_counting_announcement();
+				return;
+			}
+			// Missing money number: play wait-until-end fallback and finish.
+			counting_announcement_step = 2;
+			return;
+		}
 		if (!play_counting_announcement_file(STATUS_MONEY_AUDIO)) {
 			stop_counting_announcement();
 		}
@@ -911,6 +972,15 @@ void play_money_counting_announcement_step() {
 
 void play_minutes_counting_announcement_step() {
 	if (counting_announcement_step == 0) {
+		if (!has_numbers_number_audio(counting_announcement_value)) {
+			if (!play_numbers_number(counting_announcement_value)) {
+				stop_counting_announcement();
+				return;
+			}
+			// Missing minutes number: play wait-until-end fallback and finish.
+			counting_announcement_step = 2;
+			return;
+		}
 		if (!play_counting_announcement_file(STATUS_MINUTES_AUDIO)) {
 			stop_counting_announcement();
 		}

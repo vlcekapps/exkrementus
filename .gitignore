@@ -1,10 +1,10 @@
 ﻿# Build outputs
 builds/
-excrementus.zip
-excrementus.app.zip
-excrementus.apk
-excrementus.aab
-excrementus.apk.idsig
+exkrementus.zip
+exkrementus.app.zip
+exkrementus.apk
+exkrementus.aab
+exkrementus.apk.idsig
 
 # NVGT temp/runtime artifacts
 .tmp_nvgt/

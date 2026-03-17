@@ -4,7 +4,7 @@ Zvukova hra v NVGT, ve ktere sbirate exkrementy na mrizce 20x20. Hra je navrzena
 
 ## Obsah repozitare
 
-- `excrementus.nvgt` - hlavni zdrojovy soubor hry
+- `exkrementus.nvgt` - hlavni zdrojovy soubor hry
 - `data/audio/` - vsechny zvuky (menu, hra, reputace, konce)
 - `build-all.ps1` - automaticky build pro vice platforem
 - `builds/` - vystupni balicky (`windows`, `linux`, `mac`, `android`)
@@ -23,7 +23,7 @@ Vezmete balicek z `builds/` pro vasi platformu a spustte ho.
 ### 2) Spusteni ze zdroje
 
 ```powershell
-nvgt excrementus.nvgt
+nvgt exkrementus.nvgt
 ```
 
 ## Build vsech platforem
@@ -42,10 +42,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build-all.ps1
 
 Vystupy vzniknou v `builds/`:
 
-- `excrementus-windows.zip`
-- `excrementus-linux.zip`
-- `excrementus-mac.zip`
-- `excrementus-android.apk`
+- `exkrementus-windows.zip`
+- `exkrementus-linux.zip`
+- `exkrementus-mac.zip`
+- `exkrementus-android.apk`
 
 ## Release checklist
 
@@ -57,7 +57,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\build-all.ps1
 
 2. Overit, ze v `builds/` jsou nove 4 soubory (`windows`, `linux`, `mac`, `android`).
 3. Android smoke test:
-- nainstalovat novy `builds/excrementus-android.apk`,
+- nainstalovat novy `builds/exkrementus-android.apk`,
 - projit menu gesta (`1f swipe up/down`, `1f double tap`, `3f double tap`),
 - spustit novou hru a overit gesta (`1f single tap`, `1f swipe left/right/up/down`, `2f swipe up/down`, `3f single tap`, `3f double tap`),
 - pockat aspon 30 s behem hry (spawn/expirace) a overit, ze app nespadne.

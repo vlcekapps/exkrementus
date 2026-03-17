@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$scriptPath = Join-Path $projectRoot "excrementus.nvgt"
+$scriptPath = Join-Path $projectRoot "exkrementus.nvgt"
 $outputDir = Join-Path $projectRoot "builds"
 $platforms = @("windows", "linux", "mac", "android")
 
@@ -13,11 +13,11 @@ New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 function Get-CandidatesForPlatform([string]$platform) {
 	switch ($platform) {
-		"windows" { return @("excrementus.zip") }
-		"linux" { return @("excrementus.zip") }
-		"mac" { return @("excrementus.app.zip", "excrementus.zip") }
-		"android" { return @("excrementus.apk", "excrementus.aab", "excrementus.zip") }
-		default { return @("excrementus.zip") }
+		"windows" { return @("exkrementus.zip") }
+		"linux" { return @("exkrementus.zip") }
+		"mac" { return @("exkrementus.app.zip", "exkrementus.zip") }
+		"android" { return @("exkrementus.apk", "exkrementus.aab", "exkrementus.zip") }
+		default { return @("exkrementus.zip") }
 	}
 }
 
@@ -48,7 +48,7 @@ foreach ($platform in $platforms) {
 		throw "Expected bundle not found after $platform build"
 	}
 
-	$targetPath = Join-Path $outputDir ("excrementus-" + $platform + [System.IO.Path]::GetExtension($bundlePath))
+	$targetPath = Join-Path $outputDir ("exkrementus-" + $platform + [System.IO.Path]::GetExtension($bundlePath))
 	Move-Item -Force $bundlePath $targetPath
 }
 
