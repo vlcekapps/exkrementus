@@ -7,11 +7,14 @@ Zvukova hra v NVGT, ve ktere sbirate exkrementy na mrizce 20x20. Hra je navrzena
 - `exkrementus.nvgt` - hlavni zdrojovy soubor hry
 - `data/audio/` - vsechny zvuky (menu, hra, reputace, konce)
 - `build-all.ps1` - automaticky build pro vice platforem
+- `release.ps1` - release workflow (build, tag, upload assets na GitHub)
+- `VERSION` - aktualni verze pro release
 - `builds/` - vystupni balicky (`windows`, `linux`, `mac`, `android`)
 
 ## Pozadavky
 
 - Nainstalovane NVGT CLI (`nvgt`) dostupne v `PATH`
+- GitHub CLI (`gh`) prihlasene na spravny ucet
 - PowerShell (pro spusteni build skriptu)
 
 ## Spusteni
@@ -47,33 +50,59 @@ Vystupy vzniknou v `builds/`:
 - `exkrementus-mac.zip`
 - `exkrementus-android.apk`
 
-## Release checklist
+## Automaticky release
 
-1. Spustit build vsech platforem:
+Zakladni release (bump `patch` a publikace na GitHub):
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\build-all.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1
 ```
 
-2. Overit, ze v `builds/` jsou nove 4 soubory (`windows`, `linux`, `mac`, `android`).
-3. Android smoke test:
-- nainstalovat novy `builds/exkrementus-android.apk`,
-- projit menu gesta (`1f swipe up/down`, `1f double tap`, `3f double tap`),
-- spustit novou hru a overit gesta (`1f single tap`, `1f swipe left/right/up/down`, `2f swipe up/down`, `3f single tap`, `3f double tap`),
-- pockat aspon 30 s behem hry (spawn/expirace) a overit, ze app nespadne.
-4. Pred testem vycistit logy:
+Co skript udela:
+
+1. overi cisty git working tree a ze jste na vetvi `main`
+2. navysi verzi v `VERSION` (`patch`/`minor`/`major`, nebo explicitni `-Version`)
+3. spusti `build-all.ps1`
+4. zkontroluje release assets v `builds/`
+5. commitne novou hodnotu `VERSION` a pushne `main`
+6. vytvori a pushne tag `vX.Y.Z`
+7. vytvori nebo upravi GitHub release a nahraje assets
+
+Priklady:
+
+```powershell
+# minor release
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1 -Bump minor
+
+# explicitni verze
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1 -Version 1.2.0
+
+# local test release flow bez pushe a bez GitHub release
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1 -SkipPush -SkipRelease
+
+# draft prerelease
+powershell -NoProfile -ExecutionPolicy Bypass -File .\release.ps1 -Prerelease -Draft
+```
+
+## Release smoke test (Android)
+
+1. nainstalovat novy `builds/exkrementus-android.apk`
+2. projit menu gesta (`1f swipe up/down`, `1f double tap`, `3f double tap`)
+3. spustit novou hru a overit gesta (`1f single tap`, `1f swipe left/right/up/down`, `2f swipe up/down`, `3f single tap`, `3f double tap`)
+4. pockat aspon 30 s behem hry (spawn/expirace) a overit, ze app nespadne
+5. pred testem vycistit logy:
 
 ```powershell
 adb logcat -c
 ```
 
-5. Pri testu bezet se zaznamem logu:
+6. pri testu bezet se zaznamem logu:
 
 ```powershell
 adb logcat -b all -v threadtime > exkrementus_crash_log.txt
 ```
 
-6. Pokud dojde k padu, ukoncit log (`Ctrl+C`) a ulozit `exkrementus_crash_log.txt` k analyze.
+7. pokud dojde k padu, ukoncit log (`Ctrl+C`) a ulozit `exkrementus_crash_log.txt` k analyze
 
 ## Jak hra funguje
 
