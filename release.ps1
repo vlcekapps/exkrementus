@@ -236,9 +236,15 @@ if (-not $SkipRelease) {
 
 	Require-Command -Name gh
 	$releaseTitle = "Exkrementus $newVersion"
-
-	& gh release view $tagName *> $null
-	$releaseExists = ($LASTEXITCODE -eq 0)
+	$releaseExists = $false
+	$previousErrorActionPreference = $ErrorActionPreference
+	try {
+		$ErrorActionPreference = "Continue"
+		& gh release view $tagName *> $null
+		$releaseExists = ($LASTEXITCODE -eq 0)
+	} finally {
+		$ErrorActionPreference = $previousErrorActionPreference
+	}
 
 	if ($releaseExists) {
 		$editArgs = @("release", "edit", $tagName, "--title", $releaseTitle, "--notes-file", $releaseNotesPath, "--verify-tag")
